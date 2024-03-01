@@ -17,9 +17,6 @@ password = os.environ.get("DB_PASSWORD")
 dbname = os.environ.get("DB_NAME")
 
 
-print(host, port, user, password, dbname)
-
-
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> None:
     pool = await asyncpg.create_pool(
