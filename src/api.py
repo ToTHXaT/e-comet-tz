@@ -1,19 +1,24 @@
 from datetime import date
 
+import asyncpg
+from asyncpg import Pool, Connection
+
 from fastapi.routing import APIRouter
 from fastapi import Request, Depends, HTTPException
 
-from asyncpg import Pool, Connection
-
 from src.managers import get_top100, get_activity, RepositoryInfo, CommitActivityInfo
+
 
 api = APIRouter()
 
 
 async def set_connection(req: Request):
     pool: Pool = req.app.state.pool
-    async with pool.acquire() as conn:
-        yield conn
+    try:
+        async with pool.acquire() as conn:
+            yield conn
+    except asyncpg.ConnectionFailureError:
+        raise HTTPException(500, "Could not connect to db")
 
 
 @api.get("repos/top100", response_model=list[RepositoryInfo])

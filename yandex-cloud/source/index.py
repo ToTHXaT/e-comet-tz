@@ -1,7 +1,8 @@
-from json import JSONDecodeError
-from typing import NamedTuple, TypeAlias
+import os
 
 import datetime
+from json import JSONDecodeError
+from typing import NamedTuple, TypeAlias
 from datetime import date
 from datetime import datetime, timedelta
 
@@ -9,7 +10,13 @@ import requests
 import psycopg2
 
 
-token = "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"
+token = os.getenv("GITHUB_TOKEN")
+host = os.getenv("DB_HOST")
+port = os.getenv("DB_PORT")
+user = os.getenv("DB_USER")
+password = os.getenv("DB_PASSWORD")
+dbname = os.getenv("DB_NAME")
+
 
 CommitActivity: TypeAlias = dict[date, dict[str, set | int]]
 
@@ -27,6 +34,7 @@ class RepositoryInfo(NamedTuple):
 
 
 def get_popular_repositories() -> list[RepositoryInfo]:
+    """fetch top100 popular repositories from GitHub"""
     headers = {
         "Accept": "application/vnd.github+json",
         "Authorization": f"Bearer {token}",
@@ -36,7 +44,7 @@ def get_popular_repositories() -> list[RepositoryInfo]:
         headers=headers,
     )
     if resp.status_code != 200:
-        raise Exception("Status code is not 200")
+        raise Exception("Status code is not 200 while fetching repositories")
 
     try:
         data = resp.json()
@@ -48,28 +56,34 @@ def get_popular_repositories() -> list[RepositoryInfo]:
 
     data = data["items"]
 
-    result = [
-        RepositoryInfo(
-            repo=repo["full_name"],
-            owner=repo["owner"]["login"],
-            position_cur=i + 1,
-            stars=repo["stargazers_count"],
-            watchers=repo["watchers_count"],
-            forks=repo["forks_count"],
-            open_issues=repo["open_issues_count"],
-            language=repo["language"] or "",
-            activity=get_activity_for_repo(repo["name"], repo["owner"]["login"]),
-        )
-        for i, repo in enumerate(data)
-    ]
+    try:
+        result = [
+            RepositoryInfo(
+                repo=repo["full_name"],
+                owner=repo["owner"]["login"],
+                position_cur=i + 1,
+                stars=repo["stargazers_count"],
+                watchers=repo["watchers_count"],
+                forks=repo["forks_count"],
+                open_issues=repo["open_issues_count"],
+                language=repo["language"] or "",
+                activity=get_activity_for_repo(repo["name"], repo["owner"]["login"]),
+            )
+            for i, repo in enumerate(data)
+        ]
+    except KeyError as e:
+        raise Exception("Json schema not as expected") from e
 
     return result
 
 
 def get_activity_for_repo(repo: str, owner: str) -> dict[date, dict[str, set | int]]:
+    """get commit activity for a certain repository"""
     commits_by_day = []
 
     page = 0
+
+    # Loading by chunks of 100 (GitHub limit)
     while True:
         page += 1
         after = date.today() - timedelta(days=7)
@@ -92,7 +106,9 @@ def get_activity_for_repo(repo: str, owner: str) -> dict[date, dict[str, set | i
         try:
             data = resp.json()
         except JSONDecodeError as e:
-            raise Exception(f"Invalid JSON response when fetching activity  for {owner=} {repo=}") from e
+            raise Exception(
+                f"Invalid JSON response when fetching activity  for {owner=} {repo=}"
+            ) from e
 
         commits_by_day.extend(
             (
@@ -100,15 +116,16 @@ def get_activity_for_repo(repo: str, owner: str) -> dict[date, dict[str, set | i
                     i["commit"]["author"]["date"].split("T")[0], "%Y-%m-%d"
                 ).date(),
                 (
-                    (i.get("author") or {}).get("login") or
-                    (i.get("committer") or {}).get("login") or
-                    (i["commit"].get("committer") or {}).get("name") or
-                    (i["commit"].get("author") or {}).get("name")
+                    (i.get("author") or {}).get("login")
+                    or (i.get("committer") or {}).get("login")
+                    or (i["commit"].get("committer") or {}).get("name")
+                    or (i["commit"].get("author") or {}).get("name")
                 ),
             )
             for i in data
         )
 
+        # if less than 100 then no more data is left
         if len(data) < 100:
             break
 
@@ -124,62 +141,70 @@ def get_activity_for_repo(repo: str, owner: str) -> dict[date, dict[str, set | i
     return result
 
 
-def send_data_to_db() -> None:
-    with psycopg2.connect(
-        host="localhost",
-        dbname="cloud-e-comet-tz",
-        user="dev",
-        password="dev",
-        port=5432,
-    ) as conn:
-        with conn.cursor() as curs:
-            repos = get_popular_repositories()
-            curs.executemany(
-                """
-                INSERT INTO public."Repositories"
-                    (repo, owner, position_cur, position_prev, stars, watchers, forks, open_issues, language)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT(repo) DO UPDATE
-                SET
-                    owner = EXCLUDED.owner,
-                    position_prev = (select position_cur from public."Repositories" where repo = EXCLUDED.repo),
-                    position_cur = EXCLUDED.position_cur,
-                    stars = EXCLUDED.stars,
-                    watchers = EXCLUDED.watchers,
-                    forks = EXCLUDED.forks,
-                    open_issues = EXCLUDED.open_issues,
-                    language = EXCLUDED.language
+def send_data_to_db(repos: list[RepositoryInfo]) -> None:
+    """uploading data to database"""
+    try:
+        with psycopg2.connect(
+            host=host,
+            dbname=dbname,
+            user=user,
+            password=password,
+            port=port,
+        ) as conn:
+            with conn.cursor() as curs:
+                curs.executemany(
+                    """
+                    INSERT INTO public."Repositories"
+                        (repo, owner, position_cur, position_prev, stars, watchers, forks, open_issues, language)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT(repo) DO UPDATE
+                    SET
+                        owner = EXCLUDED.owner,
+                        position_prev = (select position_cur from public."Repositories" where repo = EXCLUDED.repo),
+                        position_cur = EXCLUDED.position_cur,
+                        stars = EXCLUDED.stars,
+                        watchers = EXCLUDED.watchers,
+                        forks = EXCLUDED.forks,
+                        open_issues = EXCLUDED.open_issues,
+                        language = EXCLUDED.language
+                    """,
+                    [
+                        (
+                            repo.repo,
+                            repo.owner,
+                            repo.position_cur,
+                            repo.position_cur,
+                            repo.stars,
+                            repo.watchers,
+                            repo.forks,
+                            repo.open_issues,
+                            repo.language,
+                        )
+                        for repo in repos
+                    ],
+                )
+                conn.commit()
+
+                curs.executemany(
+                    """
+                    INSERT INTO public."CommitActivities" (repo, date, commits, authors) 
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT(repo, date) DO NOTHING 
                 """,
-                [
-                    (
-                        repo.repo,
-                        repo.owner,
-                        repo.position_cur,
-                        repo.position_cur,
-                        repo.stars,
-                        repo.watchers,
-                        repo.forks,
-                        repo.open_issues,
-                        repo.language,
-                    )
-                    for repo in repos
-                ],
-            )
-            conn.commit()
+                    [
+                        (repo.repo, _date, act["total"], list(act["authors"]))
+                        for repo in repos
+                        for _date, act in repo.activity.items()
+                    ],
+                )
+                conn.commit()
 
-            curs.executemany(
-                """
-                INSERT INTO public."CommitActivities" (repo, date, commits, authors) 
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT(repo, date) DO NOTHING 
-            """,
-                [
-                    (repo.repo, _date, act["total"], list(act["authors"]))
-                    for repo in repos
-                    for _date, act in repo.activity.items()
-                ],
-            )
-            conn.commit()
+    except psycopg2.errors.SqlclientUnableToEstablishSqlconnection:
+        raise Exception(f"Could not connect to db")
+    except psycopg2.errors.OperationalError as e:
+        raise Exception(f"Error while uploading to db: {e.pgerror}") from e
 
 
-send_data_to_db()
+def handler(event, context) -> None:
+    repos = get_popular_repositories()
+    send_data_to_db(repos)
