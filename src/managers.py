@@ -30,13 +30,13 @@ async def get_top100(conn: Connection, sorting_field, sorting_order) -> list[Rep
 
 
 async def get_activity(
-    conn: Connection, repo: str, since: date, until: date
+        conn: Connection, repo: str, since: date, until: date
 ) -> list[CommitActivityInfo]:
     if since > until:
         raise HTTPException(400, "starting date cannot be more than end date")
 
     commit_activities = await conn.fetch(
- """
+        """
         SELECT date, commits, authors 
         FROM public."CommitActivities" 
         WHERE repo=$1 AND date BETWEEN $2 AND $3
