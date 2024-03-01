@@ -17,8 +17,8 @@ yc iam service-account --folder-id <folder ID> list # copy service-account-id
 ## The app itself is located in the root folder and is packed into docker
 
 1. Create .env with appropriate data
-2. Change port setting in docker-compose.yml to the desired one
-3. Build image
+2. Change port setting in *docker-compose.yml* to the desired one
+3. Build the image
 ```bash
 docker-compose build
 ```
