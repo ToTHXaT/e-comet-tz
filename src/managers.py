@@ -36,12 +36,12 @@ async def get_activity(
         raise HTTPException(400, "starting date cannot be more than end date")
 
     commit_activities = await conn.fetch(
-        """
+ """
         SELECT date, commits, authors 
         FROM public."CommitActivities" 
         WHERE repo=$1 AND date BETWEEN $2 AND $3
         ORDER BY date DESC
-    """,
+        """,
         repo,
         since,
         until,
