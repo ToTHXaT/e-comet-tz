@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal, TypeAlias
 
 import asyncpg
 from asyncpg import Pool, Connection
@@ -21,9 +22,27 @@ async def set_connection(req: Request):
         raise HTTPException(500, "Could not connect to db")
 
 
+SortingField: TypeAlias = Literal[
+    "repo",
+    "owner",
+    "position_cur",
+    "position_prev",
+    "stars",
+    "watchers",
+    "forks",
+    "open_issues",
+    "language",
+]
+SortingOrder: TypeAlias = Literal["asc", "desc"]
+
+
 @api.get("repos/top100", response_model=list[RepositoryInfo])
-async def top100(conn: Connection = Depends(set_connection)):
-    return await get_top100(conn)
+async def top100(
+    conn: Connection = Depends(set_connection),
+    sorting_field: SortingField = "stars",
+    sorting_order: SortingOrder = "desc",
+):
+    return await get_top100(conn, sorting_field, sorting_order)
 
 
 @api.get("repos/{owner}/{repo}/activity", response_model=list[CommitActivityInfo])

@@ -6,10 +6,11 @@ from asyncpg import Connection
 from src.schemas import RepositoryInfo, CommitActivityInfo
 
 
-async def get_top100(conn: Connection) -> list[RepositoryInfo]:
+async def get_top100(conn: Connection, sorting_field, sorting_order) -> list[RepositoryInfo]:
+    print(sorting_field)
     repos = await conn.fetch(
-        """SELECT repo, owner, position_cur, position_prev, stars, watchers, forks, open_issues, language 
-        FROM public."Repositories" ORDER BY stars DESC LIMIT 100"""
+        f"""SELECT repo, owner, position_cur, position_prev, stars, watchers, forks, open_issues, language 
+        FROM public."Repositories" ORDER BY {sorting_field} {sorting_order} LIMIT 100"""
     )
 
     return [
