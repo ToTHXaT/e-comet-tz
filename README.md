@@ -27,5 +27,4 @@ docker-compose build
 docker-compose up
 ```
 
-## *create_tables.sql* contains sql script needed to setup Postgresql database.
-## It is expected to be executed before launching any of this apps
+## *create_tables.sql* contains sql script needed to setup Postgresql database. It is expected to be executed before launching any of this apps
