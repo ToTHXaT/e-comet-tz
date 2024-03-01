@@ -15,9 +15,9 @@ yc iam service-account --folder-id <folder ID> list # copy service-account-id
 4. Run *upload_function_to_yc.bash*
 
 > Trigger fires every day at 3:00 since data (ranking itself) does not change much, 
-> and we need to give commit activities group by day.
+> and we need to give commit activities grouped by day.
 
-> Function will load 7 days of commit activities if repository is new
+> Function will load 7 days of commit activities and keep updating every day
 
 ## The app itself is located in the root folder and is packed into docker
 
