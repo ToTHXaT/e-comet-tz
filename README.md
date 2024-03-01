@@ -1,4 +1,4 @@
-## *yandex-cloud* folder contain everything to upload a function to yandex cloud
+## *yandex-cloud* folder contains everything to upload a function to yandex cloud
 
 For than we need
 1. Create a *.env* file inside the folder containing all fields from *.env.template*
