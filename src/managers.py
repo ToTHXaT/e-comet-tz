@@ -7,7 +7,6 @@ from src.schemas import RepositoryInfo, CommitActivityInfo
 
 
 async def get_top100(conn: Connection, sorting_field, sorting_order) -> list[RepositoryInfo]:
-    print(sorting_field)
     repos = await conn.fetch(
         f"""SELECT repo, owner, position_cur, position_prev, stars, watchers, forks, open_issues, language 
         FROM public."Repositories" ORDER BY {sorting_field} {sorting_order} LIMIT 100"""
