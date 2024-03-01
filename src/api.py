@@ -3,9 +3,8 @@ from typing import Literal, TypeAlias
 
 import asyncpg
 from asyncpg import Pool, Connection
-
-from fastapi.routing import APIRouter
 from fastapi import Request, Depends, HTTPException
+from fastapi.routing import APIRouter
 
 from src.managers import get_top100, get_activity, RepositoryInfo, CommitActivityInfo
 

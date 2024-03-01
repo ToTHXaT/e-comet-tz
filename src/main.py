@@ -1,15 +1,14 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from src.api import api as api_router
-
 import asyncpg
-
+from fastapi import FastAPI
 from dotenv import load_dotenv
 
-load_dotenv()
+from src.api import api as api_router
 
+
+load_dotenv()
 
 host = os.environ.get("DB_HOST")
 port = os.environ.get("DB_PORT")
