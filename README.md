@@ -1,6 +1,6 @@
 ## *yandex-cloud* folder contains everything to upload a function to yandex cloud
 
-For than we need
+For that we need
 1. Create a *.env* file inside the folder containing all fields from *.env.template*
 2. Login into yc tool
 ```bash
@@ -32,4 +32,4 @@ docker-compose build
 docker-compose up
 ```
 
-## *create_tables.sql* contains sql script needed to setup Postgresql database. It is expected to be executed on your db before launching any of this apps
+## *create_tables.sql* contains sql script needed to setup Postgresql database. It is expected to be executed on your db before launching any of these apps
